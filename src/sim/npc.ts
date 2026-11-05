@@ -24,7 +24,7 @@ function makePerson(color: number) {
   scene.add(g);
   return g;
 }
-for (const s of STAND) { const g = makePerson(s.color); g.position.set(s.x, 0, s.z); g.rotation.y = s.rot; }
+const standing = STAND.map((s) => { const g = makePerson(s.color); g.position.set(s.x, 0, s.z); g.rotation.y = s.rot; return g; });
 
 const next = router.adj, keys = Object.keys(next);
 export const walkers = WALK_COLORS.map((color, k) => {
@@ -61,3 +61,6 @@ export function followWalkers(k: number) {
     const a = s[i][2] - w.g.rotation.y; w.g.rotation.y += Math.atan2(Math.sin(a), Math.cos(a)) * k;
   });
 }
+
+/** 店の中の人の位置（立っている人と歩いている人） */
+export const people = () => [...standing, ...walkers.map((w) => w.g)].map((g) => g.position);

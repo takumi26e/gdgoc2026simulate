@@ -24,7 +24,7 @@ export interface Voice {
 }
 export const audio = {
   ctx: null as AudioContext | null, started: false, userPaused: false, wired: settings.mode as Mode,
-  limiter: null as DynamicsCompressorNode | null, ra: null as ResonanceAudio | null,
+  limiter: null as DynamicsCompressorNode | null, mix: null as GainNode | null, ra: null as ResonanceAudio | null,
   modeGain: {} as Record<Mode, GainNode>, beepBuf: null as AudioBuffer | null, tickBufs: [] as AudioBuffer[],
 };
 /** 名前 → 読み上げの音声 */
@@ -111,7 +111,8 @@ export async function startAudio() {
   ctx.onstatechange = () => { report('audio', ctx.state); if (ctx.state !== 'running' && !audio.userPaused) wakeAudio(); };
   const limiter = new DynamicsCompressorNode(ctx, { threshold: -6, knee: 6, ratio: 12, attack: 0.003, release: 0.15 });
   limiter.connect(ctx.destination); audio.limiter = limiter;
-  for (const m of MODES) { audio.modeGain[m] = new GainNode(ctx, { gain: m === settings.mode ? 1 : 0 }); audio.modeGain[m].connect(limiter); }
+  const mix = new GainNode(ctx); mix.connect(limiter); audio.mix = mix;   // 店の音をまとめる（Gemini が話すあいだ小さくする）
+  for (const m of MODES) { audio.modeGain[m] = new GainNode(ctx, { gain: m === settings.mode ? 1 : 0 }); audio.modeGain[m].connect(mix); }
   const ra = new ResonanceAudio(ctx, { ambisonicOrder: 3 }); audio.ra = ra;
   ra.output.connect(audio.modeGain.resonance);
   const reverb = new ConvolverNode(ctx, { buffer: roomIR(ctx) });
@@ -144,6 +145,11 @@ export async function startAudio() {
   }
   setRoom(settings.roomOn);
   audio.started = true;
+}
+
+/** 店の音（名前、ピコピコ、音の道）の大きさ。Gemini が話すあいだは小さくする */
+export function duck(on: boolean) {
+  if (audio.ctx && audio.mix) audio.mix.gain.setTargetAtTime(on ? 0.25 : 1, audio.ctx.currentTime, 0.08);
 }
 
 /** 案内の言葉。頭の中で鳴らす（方向を持たせない） */

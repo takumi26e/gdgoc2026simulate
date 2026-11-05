@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { clockDir, closestOn, makeBlocked, readable } from '../src/core/geometry';
 import { classifyHand, type Landmark } from '../src/core/gesture';
 import { makeKemar, type KemarData } from '../src/core/kemar';
-import { buildRoads, junctions, roadPlan } from '../src/core/roads';
+import { buildRoads, closestOnRoad, junctions, roadPlan, roadRoute, snapToRoad } from '../src/core/roads';
+import { findGoals } from '../src/core/search';
 import { corners, makeRouter } from '../src/core/route';
 import { buildStore, type RectEl, type StoreData } from '../src/core/store';
 import kemarData from '../src/data/kemar.json';
@@ -105,5 +106,32 @@ describe('KEMAR', () => {
   it('右 90° はそのまま、左 90° は左右を入れ替える', () => {
     const r = k.pick(90, 0), l = k.pick(-90, 0);
     expect([r.az, r.mirror, l.az, l.mirror]).toEqual([90, false, 90, true]);
+  });
+});
+
+describe('Gemini の案内', () => {
+  const roads = buildRoads(N), juncs = junctions(roads);
+  it('名前から棚を探す（棚・商品・カテゴリ・島、ひらがなや中黒の違い）', () => {
+    const names = (q: string) => findGoals(store, q).map((g) => g.name);
+    expect(names('お茶')).toEqual(['水']);   // 「お〜いお茶」が並ぶ棚
+    expect(names('緑茶')).toEqual(['水']);
+    expect(names('ツナマヨネーズ')).toEqual(['朝食']);
+    expect(names('カップ 麺')).toContain('カップ麺');   // 空白などの違いは無視する（漢字とかなの違いは見ない）
+    expect(names('アイス').length).toBe(2);   // 両面の棚
+    expect(names('出口')).toEqual(['出口']);
+    expect(names('ドリンク')).toEqual(['水', 'ジュース', 'お酒']);   // 島の名前なら、その島の棚
+  });
+  it('道の上だけを通って棚へ行く', () => {
+    const shelf = findGoals(store, 'ジュース')[0] as RectEl, goal = shelf.g.at((shelf.span[0] + shelf.span[1]) / 2, 0);
+    const path = roadRoute(roads, juncs, START, goal)!;
+    expect(path).not.toBeNull();
+    for (const p of path) expect(roads.some((r) => closestOnRoad(p, r).distanceTo(p) < 1e-6)).toBe(true);
+    for (let i = 1; i < path.length; i++) expect(path[i].x === path[i - 1].x || path[i].z === path[i - 1].z).toBe(true);   // 縦か横にだけ進む
+    expect(path.at(-1)!.distanceTo(snapToRoad(roads, goal))).toBeLessThan(1e-6);
+  });
+  it('すべての棚へ道がある', () => {
+    for (const isl of store.islands) for (const sh of isl.children as RectEl[]) {
+      expect(roadRoute(roads, juncs, START, sh.g.at((sh.span[0] + sh.span[1]) / 2, 0)), sh.name).not.toBeNull();
+    }
   });
 });

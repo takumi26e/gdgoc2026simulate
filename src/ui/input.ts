@@ -4,7 +4,7 @@ import { setMode } from '../audio/engine';
 import { hand } from '../sim/hand';
 import { input } from '../state';
 import { renderer } from '../world';
-import { requestSound, soundHold } from './buttons';
+import { requestTrail, trailHold } from './buttons';
 import { grab, modeByKey, switchCam, toggleNav } from './panel';
 
 export function setupInput() {
@@ -17,8 +17,7 @@ export function setupInput() {
       if (e.code === 'KeyV') switchCam();
       if (e.code === 'KeyG') toggleNav();
       if (e.code === 'KeyC') grab();
-      if (e.code === 'KeyT') { requestSound('trailAt'); soundHold('trailAt', true); }
-      if (e.code === 'KeyL') { requestSound('listenAt'); soundHold('listenAt', true); }
+      if (e.code === 'KeyT') { requestTrail(); trailHold(true); }
       const m = modeByKey(e.code); if (m) setMode(m);
     }
     keys.add(e.code);
@@ -26,10 +25,9 @@ export function setupInput() {
   });
   addEventListener('keyup', (e) => {
     keys.delete(e.code);
-    if (e.code === 'KeyT') soundHold('trailAt', false);
-    if (e.code === 'KeyL') soundHold('listenAt', false);
+    if (e.code === 'KeyT') trailHold(false);
   });
-  addEventListener('blur', () => { keys.clear(); input.mouseDown = false; soundHold('trailAt', false); soundHold('listenAt', false); });
+  addEventListener('blur', () => { keys.clear(); input.mouseDown = false; trailHold(false); });
 
   // マウス: 手の向き。左ボタンで指さし、ホイールで手の高さ（上からの視点）
   const cv = renderer.domElement;

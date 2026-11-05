@@ -7,7 +7,8 @@ import { nav, startNav, stopNav } from '../sim/nav';
 import { enableSensors, recenter, sensor } from '../sim/orientation';
 import { ISLANDS } from '../shop';
 import { display } from '../state';
-import { bindGesture, bindSound } from './buttons';
+import { talkStart, talkStop } from '../voice/gemini';
+import { bindGesture, bindPress, bindTrail } from './buttons';
 import { toggleAudio } from './panel';
 
 const SLIDE_DEAD = 12, SLIDE_FULL = 80;   // 動き始めるスライド量と、最高速になるスライド量(px)
@@ -31,7 +32,8 @@ export function setupPhone() {
     }, 2000);
   };
   bindGesture($('pOpen'), 'open'); bindGesture($('pPoint'), 'point');
-  bindSound($('pTrail'), 'trailAt'); bindSound($('pListen'), 'listenAt');
+  bindTrail($('pTrail'));
+  bindPress($('pTalk'), talkStart, talkStop);   // 押しているあいだだけ、マイクの音を Gemini へ送る
   $('pRecenter').onclick = recenter;
   $('pBlackout').onclick = () => {
     display.blackout = !display.blackout;

@@ -1,14 +1,14 @@
 // PC とスマホのあいだで、何をいつ送り、届いた値をどう使うか
 import { audio, setMode, setRoom } from './audio/engine';
-import { startListen, startTrail } from './audio/select';
+import { startTrail } from './audio/select';
 import { $ } from './dom';
 import { connect, link, linkFlush, linkSend, phoneLinked, report, type LinkState } from './link';
 import { hand } from './sim/hand';
 import { camHand } from './sim/handcam';
-import { nav, startNav, stopNav } from './sim/nav';
+import { nav, startNav, startRoadNav, stopNav } from './sim/nav';
 import { walkerState } from './sim/npc';
 import { sensor } from './sim/orientation';
-import { BUILD, ISLANDS, blocked } from './shop';
+import { BUILD, byKey, blocked } from './shop';
 import { ROLE, input, settings } from './state';
 import { applyView, player, world } from './world';
 
@@ -23,22 +23,22 @@ function applySettings(c: LinkState['settings']) {
 }
 
 function onValues(values: Partial<LinkState>, initial: boolean) {
-  const before = nav.on ? nav.isl!.id : null;
+  const before = nav.on ? (nav.kind === 'road' ? `road:${nav.isl!.key}` : nav.isl!.key) : null;
   Object.assign(link.state, values);
   // 受け取った値を送信済みとして記録する（同じ値をあとで自分から送れるように）。
   // 接続時の状態は前回の値なので記録しない。記録すると、古い値と同じ値（センサーが動いた合図など）を送れなくなる
   if (initial) {
     if (ROLE === 'phone') link.state.headLinked = sensor.events > 0;
-    link.state.listenHold = link.state.trailHold = false;
+    link.state.trailHold = false;
   } else for (const [k, v] of Object.entries(values)) link.sent[k] = JSON.stringify(v);
   if ('navTarget' in values && values.navTarget !== before) {
-    if (values.navTarget) startNav(ISLANDS.find((i) => i.id === values.navTarget)!, true);
+    const t = values.navTarget, goal = t && byKey.get(t.replace(/^road:/, ''));
+    if (goal) { if (t!.startsWith('road:')) startRoadNav(goal, true); else startNav(goal, true); }
     else if (nav.on) stopNav(link.state.navMsg, true);
   }
   if (values.settings) applySettings(values.settings);
   if (!initial && ROLE === 'phone') {   // PC のボタン。接続時の前回の値では鳴らさない
     if ('trailAt' in values) startTrail();
-    if ('listenAt' in values) startListen();
   }
   // PC を開き直しても同じ位置から続ける。店の配置が変わって棚の中になる位置は使わない
   if (initial && ROLE === 'pc' && values.x != null && values.z != null && !blocked(values.x, values.z)) player.position.set(values.x, 0, values.z);
@@ -62,6 +62,7 @@ export function linkTick() {
       settings: { ...settings },
       npcs: walkerState(),
     });
+    $<HTMLInputElement>('reading').checked = link.state.reading;
     const el = $('linkStatus');
     el.hidden = !link.socket;
     el.textContent = !link.connected ? 'サーバーに再接続しています'
@@ -81,7 +82,7 @@ export function startSync() {
   addEventListener('unhandledrejection', (e) => report('rejection', e.reason?.stack ?? e.reason));
   connect({
     onOpen() {
-      linkSend({ [`${ROLE}Ver`]: BUILD, listenHold: false, trailHold: false });
+      linkSend({ [`${ROLE}Ver`]: BUILD, trailHold: false });
       // センサーが動いていないスマホが、前回の値のまま向きの主導権を持たないようにする
       if (ROLE === 'phone') linkSend({ headLinked: sensor.events > 0, phoneMove: 0 });
       linkTick();   // つないだらすぐ、いまの位置などを送る

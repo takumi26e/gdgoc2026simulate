@@ -2,32 +2,32 @@
 import { audio, setMode, setRoom, startAudio } from '../audio/engine';
 import { MODES, type Mode } from '../config';
 import { $, hud } from '../dom';
-import { link } from '../link';
+import { link, linkSend } from '../link';
 import { hand } from '../sim/hand';
 import { camHand, startHandCam, stopHandCam } from '../sim/handcam';
 import { nav, navHooks, startNav, stopNav } from '../sim/nav';
 import { ISLANDS } from '../shop';
 import { settings } from '../state';
 import { applyView, topCam, toggleCam, world } from '../world';
-import { bindSound } from './buttons';
+import { bindTrail } from './buttons';
 
 const destSel = $<HTMLSelectElement>('dest');
 const goBtn = $('go'), camBtn = $('cam'), startBtn = $<HTMLButtonElement>('start'), handBtn = $<HTMLButtonElement>('handBtn');
-for (const isl of ISLANDS) destSel.add(new Option(isl.name, isl.id));
+for (const isl of ISLANDS) destSel.add(new Option(isl.name, isl.key));
 navHooks.onChange = () => { goBtn.textContent = nav.on ? '案内をやめる（G）' : '案内を始める（G）'; };
 const canGuide = () => audio.started || link.connected;
 
 export function toggleNav() {
   if (!canGuide()) { hud.innerHTML = '<span>先に「音を出す」を押してください</span>'; return; }
   if (nav.on) stopNav('案内を終わります');
-  else startNav(ISLANDS.find((i) => i.id === destSel.value)!);
+  else startNav(ISLANDS.find((i) => i.key === destSel.value)!);
 }
 /** 手のひらの開閉: 案内中ならやめる。そうでなければ、指している島（なければ選んだ行き先）へ案内する */
 export function grab() {
   if (!canGuide()) return;
   if (nav.on) { stopNav('案内を終わります'); return; }
-  const isl = hand.hit?.isl ?? ISLANDS.find((i) => i.id === destSel.value)!;
-  destSel.value = isl.id!; startNav(isl);
+  const isl = hand.hit?.isl ?? ISLANDS.find((i) => i.key === destSel.value)!;
+  destSel.value = isl.key!; startNav(isl);
 }
 export function switchCam() {
   toggleCam();
@@ -53,8 +53,8 @@ export function setupPanel() {
   goBtn.onclick = toggleNav;
   camBtn.onclick = switchCam;
   startBtn.onclick = toggleAudio;
-  bindSound($('trailBtn'), 'trailAt');
-  bindSound($('listenBtn'), 'listenAt');
+  bindTrail($('trailBtn'));
+  $<HTMLInputElement>('reading').addEventListener('change', (e) => linkSend({ reading: (e.target as HTMLInputElement).checked }));
   handBtn.onclick = async () => {
     if (camHand.on) { stopHandCam(); handBtn.textContent = 'カメラで手を使う'; return; }
     handBtn.disabled = true; handBtn.textContent = 'カメラを準備しています';
@@ -91,7 +91,7 @@ function setupVoice() {
       const text = e.results[0][0].transcript;
       const isl = ISLANDS.find((i) => text.includes(i.name) || i.name.split('・').some((part) => text.includes(part)));
       if (!isl) { hud.innerHTML = `<span>「${text}」に合う行き先がありませんでした</span>`; return; }
-      destSel.value = isl.id!;
+      destSel.value = isl.key!;
       if (nav.on) stopNav();
       if (canGuide()) startNav(isl);
     };

@@ -28,6 +28,47 @@ export function junctions(roads: Road[]) {
   return out;
 }
 
+export const snapToRoad = (roads: Road[], q: { x: number; z: number }) => {
+  const p = new Vector3(q.x, 0, q.z);
+  return roads.map((r) => closestOnRoad(p, r)).reduce((a, b) => (a.distanceTo(p) <= b.distanceTo(p) ? a : b));
+};
+
+/**
+ * 道の上だけを通って、from から to へ行く点の列（ダイクストラ）。
+ * どちらも、いちばん近い道の上の点に寄せる。点は道の端と交差点と、寄せた 2 点
+ */
+export function roadRoute(roads: Road[], juncs: Vector3[], from: { x: number; z: number }, to: { x: number; z: number }) {
+  const a = snapToRoad(roads, from), b = snapToRoad(roads, to);
+  const key = (p: Vector3) => `${p.x.toFixed(3)},${p.z.toFixed(3)}`;
+  const pts = new Map<string, Vector3>(), adj = new Map<string, { k: string; d: number }[]>();
+  for (const r of roads) {
+    const on = [r[0], r[1], ...juncs, a, b].filter((p) => closestOnRoad(p, r).distanceTo(p) < 1e-6)
+      .sort((p, q) => p.distanceTo(r[0]) - q.distanceTo(r[0]));
+    for (let i = 0; i + 1 < on.length; i++) {
+      const p = on[i], q = on[i + 1], d = p.distanceTo(q);
+      if (d < 1e-6) continue;
+      pts.set(key(p), p); pts.set(key(q), q);
+      (adj.get(key(p)) ?? adj.set(key(p), []).get(key(p))!).push({ k: key(q), d });
+      (adj.get(key(q)) ?? adj.set(key(q), []).get(key(q))!).push({ k: key(p), d });
+    }
+  }
+  const start = key(a), goal = key(b);
+  if (start === goal) return [a];
+  const dist = new Map([[start, 0]]), prev = new Map<string, string>(), todo = new Set(pts.keys());
+  while (todo.size) {
+    let u: string | null = null;
+    for (const k of todo) if (dist.has(k) && (u === null || dist.get(k)! < dist.get(u)!)) u = k;
+    if (u === null) break;
+    todo.delete(u);
+    if (u === goal) break;
+    for (const { k, d } of adj.get(u) ?? []) { const nd = dist.get(u)! + d; if (nd < (dist.get(k) ?? Infinity)) { dist.set(k, nd); prev.set(k, u); } }
+  }
+  if (!dist.has(goal)) return null;
+  const path = [goal];
+  while (prev.has(path[0])) path.unshift(prev.get(path[0])!);
+  return path.map((k) => pts.get(k)!);
+}
+
 /**
  * from からいちばん近い道の点を起点に、行ける方向ごとの点の列を返す。交差点も通り抜けて進む。
  * 方向は右、左、奥、手前の順に並べる（同じ向きに、なるべく同じ音を当てるため）

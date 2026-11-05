@@ -6,7 +6,7 @@ import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import selfsigned from 'selfsigned';
 import type { Plugin } from 'vite';
-import { WebSocketServer, type WebSocket } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 
 const lanAddresses = () =>
   Object.values(networkInterfaces()).flat().filter((a) => a && a.family === 'IPv4' && !a.internal).map((a) => a!.address);
@@ -65,7 +65,39 @@ function attachRelay(server: HttpServer) {
   });
 }
 
-export function relay(): Plugin {
+// Gemini Live API への中継（/gemini）。API キーはサーバーだけが持ち、ページには渡さない。
+// キーは環境変数 GEMINI_API_KEY か、.gemini-key ファイル（接続のたびに読むので、置けばすぐ使える）
+const GEMINI_URL = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
+function geminiKey(root: string) {
+  if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY.trim();
+  const file = join(root, '.gemini-key');
+  return existsSync(file) ? readFileSync(file, 'utf8').trim() : '';
+}
+function attachGemini(server: HttpServer, root: string) {
+  const wss = new WebSocketServer({ noServer: true });
+  server.on('upgrade', (req, socket, head) => {
+    if (new URL(req.url ?? '/', 'https://x').pathname !== '/gemini') return;
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+  });
+  wss.on('connection', (client: WebSocket) => {
+    const key = geminiKey(root);
+    if (!key) { client.send(JSON.stringify({ proxyError: 'no-key' })); client.close(); return; }
+    const upstream = new WebSocket(`${GEMINI_URL}?key=${encodeURIComponent(key)}`);
+    const queue: string[] = [];
+    client.on('message', (raw) => { const text = raw.toString(); if (upstream.readyState === upstream.OPEN) upstream.send(text); else queue.push(text); });
+    upstream.on('open', () => { for (const m of queue.splice(0)) upstream.send(m); });
+    // Google から届くのはバイナリのこともあるので、文字にして渡す
+    upstream.on('message', (data) => { if (client.readyState === client.OPEN) client.send(data.toString()); });
+    upstream.on('close', (code, reason) => {
+      if (code !== 1000) console.log(`[gemini] closed ${code} ${reason.toString().slice(0, 300)}`);
+      if (client.readyState === client.OPEN) { client.send(JSON.stringify({ proxyClosed: { code, reason: reason.toString().slice(0, 300) } })); client.close(); }
+    });
+    upstream.on('error', (e) => { console.log(`[gemini] ${e.message}`); if (client.readyState === client.OPEN) client.close(); });
+    client.on('close', () => upstream.close());
+  });
+}
+
+export function relay(root: string): Plugin {
   const hint = (server: HttpServer, port: number) => server.once('listening', () => setTimeout(() => {
     console.log('\n  PC    : https://localhost:%d/pc.html', port);
     for (const ip of lanAddresses()) console.log('  スマホ: https://%s:%d/phone.html', ip, port);
@@ -73,7 +105,7 @@ export function relay(): Plugin {
   }, 50));
   return {
     name: 'konbini-relay',
-    configureServer(server) { if (server.httpServer) { attachRelay(server.httpServer as HttpServer); hint(server.httpServer as HttpServer, server.config.server.port ?? 8443); } },
-    configurePreviewServer(server) { attachRelay(server.httpServer as HttpServer); hint(server.httpServer as HttpServer, server.config.preview.port ?? 8443); },
+    configureServer(server) { if (server.httpServer) { attachRelay(server.httpServer as HttpServer); attachGemini(server.httpServer as HttpServer, root); hint(server.httpServer as HttpServer, server.config.server.port ?? 8443); } },
+    configurePreviewServer(server) { attachRelay(server.httpServer as HttpServer); attachGemini(server.httpServer as HttpServer, root); hint(server.httpServer as HttpServer, server.config.preview.port ?? 8443); },
   };
 }

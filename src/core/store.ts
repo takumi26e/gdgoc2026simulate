@@ -21,6 +21,8 @@ export interface StoreData {
 /** 島・棚・カテゴリ・商品と、扉の面。level は 0: 島、1: 棚、2: カテゴリ、3: 商品 */
 export interface El extends Partial<Rect> {
   level: number; name: string; parent?: El; children: El[];
+  /** 島は id、棚は「島の id/番号」。PC とスマホで同じ物を指すのに使う */
+  key?: string;
   id?: string; box?: Box; approach?: string; tiers?: number; door?: boolean;
   /** 島の、認識に使う面（棚と扉） */
   rects?: RectEl[];
@@ -56,11 +58,11 @@ export function faceGeo(box: Box, face: Face): FaceGeo {
 export function buildStore(data: StoreData): Store {
   const islands: El[] = [];
   for (const src of data.islands) {
-    const isl: El = { level: 0, name: src.name, id: src.id, box: src.box, approach: src.approach, children: [], rects: [] };
+    const isl: El = { level: 0, name: src.name, key: src.id, id: src.id, box: src.box, approach: src.approach, children: [], rects: [] };
     const h = src.box[3], top = h - 0.05, bot = 0.08;
-    for (const sh of src.shelves) {
+    for (const [k, sh] of src.shelves.entries()) {
       const g = faceGeo(src.box, sh.face);
-      const shelf: RectEl = { level: 1, name: sh.name, parent: isl, face: sh.face, g, span: sh.span, y: [bot, top], tiers: sh.tiers, children: [] };
+      const shelf: RectEl = { level: 1, name: sh.name, key: `${src.id}/${k}`, parent: isl, face: sh.face, g, span: sh.span, y: [bot, top], tiers: sh.tiers, children: [] };
       // カテゴリは縦の区画（縦陳列）。幅は商品の数に比例させる
       const total = sh.categories.reduce((a, c) => a + c.items.length, 0);
       let u = sh.span[0];

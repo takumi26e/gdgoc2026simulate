@@ -12,7 +12,7 @@ export default defineConfig(async (): Promise<UserConfig> => {
     appType: 'spa',
     server: { https, host: true, port, strictPort: true },
     preview: { https, host: true, port, strictPort: true },
-    plugins: [relay()],
+    plugins: [relay(root)],
     build: { target: 'es2022', chunkSizeWarningLimit: 1500 },
   };
 });

@@ -11,6 +11,8 @@ import storeData from './data/store.json';
 
 export const shop = buildStore(storeData as unknown as StoreData);
 export const ISLANDS = shop.islands;
+/** key（島の id、棚の「島の id/番号」）→ 島か棚 */
+export const byKey = new Map(shop.all.filter((e) => e.key).map((e) => [e.key!, e]));
 export const NODES = shop.nodes;
 export const START = new Vector3(-4.9, 0, 4.2);   // 入口を入った所
 export const blocked = makeBlocked(shop);

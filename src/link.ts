@@ -10,8 +10,9 @@ export interface LinkState {
   phoneGesture: Gesture; phoneMove: number;     // スマホのボタンとスライド
   pcOpen: boolean; pcPoint: boolean; pcHandDir: number[] | null;   // PC のキーと手のカメラ
   navTarget: string | null; navMsg: string | null;
-  trailOn: boolean; listenHold: boolean; trailHold: boolean;
-  trailAt?: number; listenAt?: number;          // PC のボタンを押した時刻（スマホで鳴らす合図）
+  trailOn: boolean; trailHold: boolean;
+  trailAt?: number;                             // PC で音の道を押した時刻（スマホで鳴らす合図）
+  reading: boolean;                             // 近い物の名前を読み上げるか（PC でも Gemini でも変えられる）
   settings: Settings | null;
   viewAspect?: number;                          // スマホの画面の縦横比
   npcs?: number[][];                            // 歩き回る人の位置（PC）
@@ -24,7 +25,7 @@ export const link = {
   state: {
     x: null, z: null, headYaw: 0, pitch: 0, headLinked: false, phoneGesture: 'none', phoneMove: 0,
     pcOpen: false, pcPoint: false, pcHandDir: null, navTarget: null, navMsg: null,
-    trailOn: false, listenHold: false, trailHold: false, settings: null,
+    trailOn: false, trailHold: false, reading: true, settings: null,
   } as LinkState,
 };
 
