@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>コンビニ立体音響</title>
+</head>
+<body>
+<div id="app">
+  <main id="view">
+    <div id="hud"><span>「音を出す」を押すと始まります</span></div>
+    <div id="announce" class="sr" role="status"></div>
+    <div id="handCam" hidden><video id="handVideo" playsinline muted></video><span id="handLabel">手を探しています</span></div>
+  </main>
+  <aside id="panel" aria-label="操作パネル">
+    <h1>コンビニ立体音響</h1>
+    <p>イヤホンで聴いてください。離れた所は島の名前、近づくと棚の名前が、その位置から聞こえます。指さすと、カテゴリや商品の名前が聞こえます。</p>
+    <p id="linkStatus" hidden></p>
+    <div class="row"><button id="start">音を出す</button></div>
+    <div class="row"><button id="cam" class="ghost">カメラの映像で見る</button></div>
+
+    <h2>手のしぐさ</h2>
+    <dl>
+      <dt>マウス</dt><dd>手を向ける方向</dd>
+      <dt><kbd>Shift</kbd> を押す</dt><dd>パー：手を向けた先の1つを聞く。近いとカテゴリ（チューハイ）、離れると棚（お酒）</dd>
+      <dt><kbd>F</kbd> か左クリックを押す</dt><dd>指さし：パーより1つ細かく聞く。近いと商品（角ハイボール）、離れるとカテゴリ</dd>
+      <dt><kbd>C</kbd></dt><dd>手のひらの開閉：指した島への案内を始める・やめる</dd>
+      <dt>ホイール</dt><dd>上からの視点で、手の高さを変える</dd>
+    </dl>
+    <div class="row"><button id="handBtn" class="ghost">カメラで手を使う</button></div>
+    <p>PC のカメラに手を向けると、人さし指だけを伸ばすと指さし、手を開くとパー、開いた手を握ると開閉になります。手の位置が、胸のカメラの画面の中の手の位置になります。</p>
+
+    <h2>案内</h2>
+    <select id="dest" aria-label="行き先"></select>
+    <div class="row"><button id="go">案内を始める（G）</button></div>
+    <div class="row"><button id="voice" class="ghost" hidden>声で行き先を言う</button></div>
+    <p>行き先の島の名前と、次の曲がり角のピコピコ音が鳴ります。正面に向くと音が高くなります。</p>
+
+    <h2>音を鳴らす</h2>
+    <div class="row"><button id="listenBtn">周りを聞く（L）</button></div>
+    <div class="row"><button id="trailBtn">音の道を鳴らす（T）</button></div>
+    <div class="range">
+      <label for="trailMs">音と音の間隔</label><output id="trailMsOut" for="trailMs">150ms</output>
+      <input type="range" id="trailMs" min="80" max="300" step="10" value="150">
+    </div>
+    <p>短く押すと1回だけ、長押しのあいだは繰り返し鳴ります。周りを聞くと、写っている近い物の名前が鳴ります。音の道は、いちばん近い道の上から、行ける方向へ音が遠ざかっていきます。方向ごとに音の種類と鳴り始めが違います。棚の名前などと一緒に鳴ります。赤い線が道で、赤い点が鳴らす場所です。どちらもすり抜けられます。</p>
+
+    <h2>いま鳴っているもの</h2>
+    <ul id="playing"><li class="empty">まだ鳴っていません</li></ul>
+
+    <h2>抽象度が変わる距離</h2>
+    <div class="range">
+      <label for="near">棚から商品へ</label><output id="nearOut" for="near">1.0m</output>
+      <input type="range" id="near" min="0.5" max="2.5" step="0.25" value="1">
+    </div>
+    <p>抽象度は棚と商品の2つです。棚までこの距離より近いと商品、遠いと棚の名前が鳴ります。指さしはいつも商品です。</p>
+
+    <h2>カメラの認識</h2>
+    <label class="check"><input type="checkbox" id="onlySeen" checked> 写っている物だけ鳴らす</label>
+    <div class="range">
+      <label for="ratio">写りの割合</label><output id="ratioOut" for="ratio">0%</output>
+      <input type="range" id="ratio" min="0" max="100" step="5" value="0">
+    </div>
+    <div class="range">
+      <label for="cover">または、画面に占める割合</label><output id="coverOut" for="cover">0%</output>
+      <input type="range" id="cover" min="0" max="100" step="5" value="0">
+    </div>
+    <div class="range">
+      <label for="fov">カメラの視野角</label><output id="fovOut" for="fov">スマホの画面</output>
+      <input type="range" id="fov" min="30" max="180" step="5" value="40">
+    </div>
+    <p>初期設定では、4m 以内でスマホの画面に少しでも写っている物のうち、商品の面を正面から左右70°以内で見ている物を、いちばん近い1つを鳴らします。スライダーを動かすと絞れます。視野角は動かすと固定されます。</p>
+
+    <h2>立体音響の方式</h2>
+    <fieldset id="modes">
+      <legend class="sr">立体音響の方式</legend>
+      <label class="mode"><input type="radio" name="mode" value="resonance" checked>
+        <b>Resonance Audio（Google）</b>
+        <small>実測の HRTF（SADIE）で鳴らします。店の反響も作れます</small></label>
+      <label class="mode"><input type="radio" name="mode" value="kemar">
+        <b>KEMAR 実測 HRTF</b>
+        <small>MIT のダミーヘッドで測った 368 方向の応答を、そのままたたみ込みます</small></label>
+      <label class="mode"><input type="radio" name="mode" value="browser">
+        <b>ブラウザ標準</b>
+        <small>Web Audio に入っている HRTF です</small></label>
+    </fieldset>
+    <label class="check"><input type="checkbox" id="room"> 店の反響を足す</label>
+
+    <h2>歩き方</h2>
+    <dl>
+      <dt><kbd>W</kbd> <kbd>S</kbd></dt><dd>前と後ろに歩く</dd>
+      <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>横に歩く</dd>
+      <dt><kbd>V</kbd></dt><dd>視点を切り替える</dd>
+      <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>立体音響の方式を切り替える</dd>
+    </dl>
+  </aside>
+</div>
+
+<div id="phoneUi">
+  <div id="curtain" hidden></div>
+  <div class="ptop">
+    <button id="pRecenter" class="ghost">向きを合わせる</button>
+    <button id="pBlackout" class="ghost" aria-pressed="false">画面を暗く</button>
+    <button id="pGuideOpen" class="ghost">案内</button>
+    <span id="phoneStatus" role="status">接続しています</span>
+  </div>
+  <div id="pnotice" role="alert" hidden></div>
+  <div class="pholds">
+    <button id="pListen" class="ponce">周りを聞く</button>
+    <button id="pTrail" class="ponce">音の道</button>
+    <button id="pOpen">パー<br><small>手を向けた方向だけ</small></button>
+    <button id="pPoint">指さし<br><small>1つ下の抽象度</small></button>
+  </div>
+  <div id="pguide" role="dialog" aria-label="案内先" hidden>
+    <h2>どこへ行きますか</h2>
+    <div id="pguideList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <button id="pGuideStop" class="ghost" hidden>案内をやめる</button>
+    <button id="pGuideClose" class="ghost">閉じる</button>
+  </div>
+  <div id="poverlay">
+    <h1>コンビニ立体音響</h1>
+    <p>イヤホンをつけて、スマホを正面に立てて持ちます。開始すると、スマホの角度が頭の向きになり、向いた方向の音が聞こえます。</p>
+    <p>画面に触れたまま上へスライドすると前へ、下へスライドすると後ろへ進みます。「周りを聞く」と「音の道」のボタンは、短く押すと1回、長押しのあいだは繰り返し鳴ります。</p>
+    <button id="pStart">開始</button>
+  </div>
+</div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

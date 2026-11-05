@@ -1,0 +1,31 @@
+{
+  "name": "konbini-simulator",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "コンビニ立体音響シミュレーター（PC とスマホを連携させて、視覚障害者向けの音の案内を試す）",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "resonance-audio": "1.0.0",
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/three": "0.170.0",
+    "@types/ws": "8.18.2",
+    "selfsigned": "5.5.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.6",
+    "vitest": "5.1.0",
+    "ws": "8.22.1"
+  }
+}
