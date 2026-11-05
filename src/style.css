@@ -1,4 +1,5 @@
 :root {
+  --tabs-h: calc(44px + env(safe-area-inset-top));
   --ink:#14171c; --ink-2:#4a5260; --ink-3:#6b7380;
   --paper:#ffffff; --floor:#f3f5f8; --rule:rgba(20,23,28,.10);
   --navy:#1f3a68; --navy-soft:rgba(31,58,104,.08); --focus:#c98a00;
@@ -7,7 +8,13 @@
 html, body { margin:0; height:100%; background:var(--paper); color:var(--ink);
   font:14px/1.6 "Hiragino Sans","Noto Sans JP",system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
 ::selection { background:var(--navy); color:#fff; }
+body:not(.has-tabs) { --tabs-h: 0px; }
+body.has-tabs { padding-top:var(--tabs-h); }
 #app { display:grid; grid-template-columns:1fr 360px; height:100%; }
+/* 上のタブ（シーンの切り替え） */
+#tabs { position:fixed; z-index:50; top:0; left:0; right:0; height:var(--tabs-h); display:flex; gap:6px; padding:4px 8px; padding-top:max(4px, env(safe-area-inset-top)); background:var(--paper); box-shadow:0 1px 0 var(--rule); }
+#tabs a { flex:1; display:flex; align-items:center; justify-content:center; min-height:36px; border-radius:8px; font-weight:700; color:var(--navy); text-decoration:none; box-shadow:0 0 0 1px var(--rule); }
+#tabs a[aria-current="page"] { background:var(--navy); color:#fff; box-shadow:none; }
 #view { position:relative; overflow:hidden; background:var(--floor); }
 canvas { display:block; cursor:crosshair; }
 #panel { border-left:1px solid var(--rule); padding:24px 20px; overflow:auto; scrollbar-color:var(--rule) transparent; }
@@ -78,13 +85,13 @@ dt { white-space:nowrap; } dd { margin:0; }
 #phoneUi [hidden] { display:none !important; }
 body.phone { overflow:hidden; }
 body.phone #app { display:block; }
-body.phone #view { position:fixed; inset:0; }
+body.phone #view { position:fixed; inset:var(--tabs-h) 0 0 0; }
 body.phone #panel { display:none; }
 body.phone, body.phone canvas, body.phone #hud, body.phone #curtain { touch-action:none; }
-body.phone #hud { top:calc(84px + env(safe-area-inset-top)); left:8px; right:8px; max-width:none; padding:8px 12px; }
+body.phone #hud { top:84px; left:8px; right:8px; max-width:none; padding:8px 12px; }
 body.phone #phoneUi { display:block; }
-#curtain { position:fixed; inset:0; background:#000; }
-.ptop { position:fixed; z-index:5; top:max(8px, env(safe-area-inset-top)); left:8px; right:8px; display:flex; flex-wrap:wrap; gap:6px; }
+#curtain { position:fixed; inset:var(--tabs-h) 0 0 0; background:#000; }
+.ptop { position:fixed; z-index:5; top:calc(var(--tabs-h) + 8px); left:8px; right:8px; display:flex; flex-wrap:wrap; gap:6px; }
 .ptop button { width:auto; flex:1 1 auto; min-height:44px; padding:0 6px; font-size:14px; }
 @media (max-width:359px) { .ptop button { padding:0 4px; font-size:12px; } }
 #phoneStatus { flex-basis:100%; font-size:12px; color:var(--ink-2); background:var(--paper); border-radius:4px; padding:0 6px; }
@@ -92,8 +99,8 @@ body.phone #phoneUi { display:block; }
 .pholds button { height:120px; font-size:18px; line-height:1.35; padding:0 6px; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none; background:var(--paper); color:var(--navy); }
 .pholds button.ponce { height:72px; }
 .pholds button.active { background:var(--navy); color:#fff; }
-#pnotice { position:fixed; z-index:40; top:calc(150px + env(safe-area-inset-top)); left:16px; right:16px; padding:10px 12px; background:#fff3d6; color:var(--ink); border-radius:8px; box-shadow:0 0 0 1px var(--focus); }
-#pguide { position:fixed; z-index:20; inset:8px; padding:14px; background:var(--paper); border-radius:10px; box-shadow:0 0 0 1px var(--rule); overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+#pnotice { position:fixed; z-index:40; top:calc(var(--tabs-h) + 150px); left:16px; right:16px; padding:10px 12px; background:#fff3d6; color:var(--ink); border-radius:8px; box-shadow:0 0 0 1px var(--focus); }
+#pguide { position:fixed; z-index:20; inset:calc(var(--tabs-h) + 8px) 8px 8px 8px; padding:14px; background:var(--paper); border-radius:10px; box-shadow:0 0 0 1px var(--rule); overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
 #pguide h2 { margin:0; font-size:18px; color:var(--ink); }
-#poverlay { position:fixed; z-index:30; inset:0; padding:24px 16px; background:var(--paper); display:flex; flex-direction:column; justify-content:center; gap:16px; }
+#poverlay { position:fixed; z-index:30; inset:var(--tabs-h) 0 0 0; padding:24px 16px; background:var(--paper); display:flex; flex-direction:column; justify-content:center; gap:16px; }
 #poverlay button { min-height:84px; font-size:22px; }

@@ -7,5 +7,6 @@ declare module 'resonance-audio' {
     createSource(options?: { rolloff?: string; minDistance?: number; maxDistance?: number }): Source;
     setRoomProperties(dimensions: { width: number; height: number; depth: number }, materials: Record<string, string>): void;
     setListenerFromMatrix(matrix: { elements: ArrayLike<number> }): void;
+    setListenerOrientation(fx: number, fy: number, fz: number, ux: number, uy: number, uz: number): void;
   }
 }

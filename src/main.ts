@@ -18,8 +18,10 @@ import { updateHud } from './ui/hud';
 import { setupInput } from './ui/input';
 import { grab, setupPanel } from './ui/panel';
 import { setupPhone } from './ui/phone';
+import { setupTabs } from './tabs';
 import { chest, head, player, renderer, resize, scene, world } from './world';
 
+setupTabs('store');
 setupPanel();
 if (ROLE === 'phone') setupPhone(); else setupInput();
 addEventListener('resize', resize); resize();
